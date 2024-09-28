@@ -26,7 +26,8 @@ class TriviaStation extends StatefulWidget {
   _TriviaStationState createState() => _TriviaStationState();
 }
 
-class _TriviaStationState extends State<TriviaStation> with SingleTickerProviderStateMixin {
+class _TriviaStationState extends State<TriviaStation>
+    with SingleTickerProviderStateMixin {
   List<dynamic> _triviaQuestions = [];
   int? _selectedOption;
   Map<String, dynamic>? _currentQuestion;
@@ -39,12 +40,12 @@ class _TriviaStationState extends State<TriviaStation> with SingleTickerProvider
   String _status = 'active';
   String _userAnswer = '';
 
-   late AnimationController _controller;
+  late AnimationController _controller;
   late Animation<double> _animation;
   late List<String> _names;
   late double _angle;
 
-   @override
+  @override
   void initState() {
     super.initState();
     if (widget.role == 'admin') {
@@ -53,20 +54,18 @@ class _TriviaStationState extends State<TriviaStation> with SingleTickerProvider
     } else {
       _startPollingForQuestions();
     }
-    
+
     _controller = AnimationController(
       duration: const Duration(seconds: 5),
       vsync: this,
     )..addListener(() {
-      setState(() {
-        _angle += _animation.value;
+        setState(() {
+          _angle += _animation.value;
+        });
       });
-    });
 
     _animation = Tween<double>(begin: 0.0, end: 2 * pi).animate(_controller);
   }
-
-
 
   void _startPollingForQuestions() {
     // Poll every 5 seconds (5000 milliseconds)
@@ -74,17 +73,17 @@ class _TriviaStationState extends State<TriviaStation> with SingleTickerProvider
       _startTriviaForStudents(); // Fetch new trivia question
     });
   }
+
   void _startPollingForQuestionsAdmin() {
     // Poll every 5 seconds (5000 milliseconds)
     _pollingTimer = Timer.periodic(Duration(seconds: 1), (timer) {
       _startTriviaForStudents(); // Fetch new trivia question
     });
   }
-  
 
   Future<void> _fetchTriviaQuestions() async {
     // String url = "http://10.0.0.57/api/triviasGameAPI.php";
-    String url = "http://192.168.1.12/triviaster/api/triviasGameAPI.php";
+    String url = "http://192.168.0.108/triviaster/api/triviasGameAPI.php";
     final Map<String, dynamic> queryParams = {
       "operation": "displayTrivia",
       'json': "",
@@ -112,9 +111,9 @@ class _TriviaStationState extends State<TriviaStation> with SingleTickerProvider
     }
   }
 
- void _startTriviaForStudents() async {
+  void _startTriviaForStudents() async {
     // String url = "http://10.0.0.57/api/triviasGameAPI.php";
-    String url = "http://192.168.1.12/triviaster/api/triviasGameAPI.php";
+    String url = "http://192.168.0.108/triviaster/api/triviasGameAPI.php";
     final Map<String, dynamic> queryParams = {
       "operation": "getActiveTrivia",
       'json': jsonEncode({'user_id': widget.userId}),
@@ -131,7 +130,8 @@ class _TriviaStationState extends State<TriviaStation> with SingleTickerProvider
 
         if (mounted && jsonData.isNotEmpty) {
           // Only update if there's a new question
-          if (_currentQuestion == null || _currentQuestion!['question_id'] != jsonData['question_id']) {
+          if (_currentQuestion == null ||
+              _currentQuestion!['question_id'] != jsonData['question_id']) {
             setState(() {
               _currentQuestion = jsonData;
               _selectedOption = null;
@@ -158,7 +158,6 @@ class _TriviaStationState extends State<TriviaStation> with SingleTickerProvider
             _timeRemaining--;
           } else {
             timer.cancel();
-         
 
             _showCorrectUsers();
             _updateTriviaStatus();
@@ -168,109 +167,118 @@ class _TriviaStationState extends State<TriviaStation> with SingleTickerProvider
     });
   }
 
- void _showCorrectUsers() async {
-  if (widget.role != 'admin') {
-    // If the user is not an admin, don't show the dialog
-    return;
-  }
-
-  // String url = "http://10.0.0.57/api/triviasGameAPI.php";
-  String url = "http://192.168.1.12/triviaster/api/triviasGameAPI.php";
-  final Map<String, dynamic> queryParams = {
-    "operation": "displayCorrectUser",
-    'json': jsonEncode({'question_id': _currentQuestion!['question_id']}),
-  };
-
-  try {
-    http.Response response = await http.get(
-      Uri.parse(url).replace(queryParameters: queryParams),
-    );
-
-    if (response.statusCode == 200) {
-      List<dynamic> jsonData = jsonDecode(response.body);
-      print('Fetched Correct Users Data: $jsonData');
-
-      setState(() {
-        _correctUsers = jsonData.map((user) => user['fullname'] as String).toList();
-      });
-
-      if (_correctUsers.isNotEmpty) {
-        _showCorrectUsersDialog(); // Only admin will reach this point
-      } else {
-        _showNoCorrectUsersDialog(); // Only admin will reach this point
-      }
-    } else {
-      print("Failed to fetch correct users. Status code: ${response.statusCode}");
+  void _showCorrectUsers() async {
+    if (widget.role != 'admin') {
+      // If the user is not an admin, don't show the dialog
+      return;
     }
-  } catch (e) {
-    print("Error fetching correct users: $e");
+
+    // String url = "http://10.0.0.57/api/triviasGameAPI.php";
+    String url = "http://192.168.0.108/triviaster/api/triviasGameAPI.php";
+    final Map<String, dynamic> queryParams = {
+      "operation": "displayCorrectUser",
+      'json': jsonEncode({'question_id': _currentQuestion!['question_id']}),
+    };
+
+    try {
+      http.Response response = await http.get(
+        Uri.parse(url).replace(queryParameters: queryParams),
+      );
+
+      if (response.statusCode == 200) {
+        List<dynamic> jsonData = jsonDecode(response.body);
+        print('Fetched Correct Users Data: $jsonData');
+
+        setState(() {
+          _correctUsers =
+              jsonData.map((user) => user['fullname'] as String).toList();
+        });
+
+        if (_correctUsers.isNotEmpty) {
+          _showCorrectUsersDialog(); // Only admin will reach this point
+        } else {
+          _showNoCorrectUsersDialog(); // Only admin will reach this point
+        }
+      } else {
+        print(
+            "Failed to fetch correct users. Status code: ${response.statusCode}");
+      }
+    } catch (e) {
+      print("Error fetching correct users: $e");
+    }
   }
-}
 
-
-void _showCorrectUsersDialog() {
-  // This method will only be called for admin users
-  showDialog(
-    context: context,
-    builder: (BuildContext context) {
-      return AlertDialog(
-        backgroundColor: Colors.black87,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(15),
-        ),
-        title: Row(
-          children: [
-            Icon(Icons.videogame_asset_rounded, color: Colors.greenAccent),
-            SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                "Users who got the correct answer",
-                style: TextStyle(color: Colors.greenAccent, fontSize: 24, fontWeight: FontWeight.bold),
+  void _showCorrectUsersDialog() {
+    // This method will only be called for admin users
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: Colors.black87,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(15),
+          ),
+          title: Row(
+            children: [
+              Icon(Icons.videogame_asset_rounded, color: Colors.greenAccent),
+              SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  "Users who got the correct answer",
+                  style: TextStyle(
+                      color: Colors.greenAccent,
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold),
+                ),
               ),
+            ],
+          ),
+          content: Container(
+            width: double.maxFinite,
+            child: SpinnerWidget(
+              names: _correctUsers,
+              onWinnerSelected: (winner) {
+                Navigator.of(context).pop();
+                _showWinnerDialog(winner);
+              },
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _showNoCorrectUsersDialog() {
+    // This method will only be called for admin users
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: Colors.black87,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(15),
+          ),
+          title: Text(
+            "No correct users found.",
+            style: TextStyle(
+                color: Colors.redAccent,
+                fontSize: 24,
+                fontWeight: FontWeight.bold),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: Text("Close"),
             ),
           ],
-        ),
-        content: Container(
-          width: double.maxFinite,
-          child: SpinnerWidget(
-            names: _correctUsers,
-            onWinnerSelected: (winner) {
-              Navigator.of(context).pop();
-              _showWinnerDialog(winner);
-            },
-          ),
-        ),
-      );
-    },
-  );
-}
-void _showNoCorrectUsersDialog() {
-  // This method will only be called for admin users
-  showDialog(
-    context: context,
-    builder: (BuildContext context) {
-      return AlertDialog(
-        backgroundColor: Colors.black87,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(15),
-        ),
-        title: Text(
-          "No correct users found.",
-          style: TextStyle(color: Colors.redAccent, fontSize: 24, fontWeight: FontWeight.bold),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-            },
-            child: Text("Close"),
-          ),
-        ],
-      );
-    },
-  );
-}
-void _showWinnerDialog(String winner) {
+        );
+      },
+    );
+  }
+
+  void _showWinnerDialog(String winner) {
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -308,10 +316,6 @@ void _showWinnerDialog(String winner) {
 
     // _confettiController.play();
   }
-
-
-
-
 
   void _selectLuckyWinner() {
     if (_correctUsers.isNotEmpty) {
@@ -372,14 +376,15 @@ void _showWinnerDialog(String winner) {
     }
   }
 
-void _submitAnswer() async {
+  void _submitAnswer() async {
     if (_userAnswer.isEmpty) {
       // No answer provided, show a warning or return
       return;
     }
 
     // Uri uri = Uri.parse('http://10.0.0.57/api/triviasGameAPI.php');
-    Uri uri = Uri.parse('http://192.168.1.12/triviaster/api/triviasGameAPI.php');
+    Uri uri =
+        Uri.parse('http://192.168.0.108/triviaster/api/triviasGameAPI.php');
     String correctAnswer = _currentQuestion!['correct_answer'];
     int questionId = _currentQuestion!['question_id'];
 
@@ -453,7 +458,7 @@ void _submitAnswer() async {
 
       // Save the trivia question ID to the database
       // String url = "http://10.0.0.57/api/triviasGameAPI.php";
-      String url = "http://192.168.1.12/triviaster/api/triviasGameAPI.php";
+      String url = "http://192.168.0.108/triviaster/api/triviasGameAPI.php";
       final Map<String, dynamic> queryParams = {
         "operation": "startTrivia",
         'json': jsonEncode(
@@ -487,7 +492,7 @@ void _submitAnswer() async {
 
   Future<void> _updateTriviaStatus() async {
     // String url = "http://10.0.0.57/api/triviasGameAPI.php";
-    String url = "http://192.168.1.12/triviaster/api/triviasGameAPI.php";
+    String url = "http://192.168.0.108/triviaster/api/triviasGameAPI.php";
     final Map<String, dynamic> queryParams = {
       "operation": "updateTriviaStatus",
       'json': jsonEncode(
@@ -515,7 +520,7 @@ void _submitAnswer() async {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Trivia Station'),
+        title: Text('Triviaster'),
         backgroundColor:
             Colors.green[800], // Sets a game-like color theme for the app bar
       ),
@@ -611,41 +616,41 @@ void _submitAnswer() async {
                       SizedBox(height: 20),
                     ],
                     if (widget.role == 'student') ...[
-                    TextField(
-                      onChanged: (value) {
-                        setState(() {
-                          _userAnswer = value;
-                        });
-                      },
-                      decoration: InputDecoration(
-                        hintText: 'Enter your answer',
-                        filled: true,
-                        fillColor: Colors.white,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10),
-                          borderSide: BorderSide.none,
-                        ),
-                      ),
-                      style: TextStyle(color: Colors.black),
-                    ),
-                    SizedBox(height: 20),
-                    Center(
-                      child: ElevatedButton(
-                        onPressed: _submitAnswer,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.orangeAccent,
-                          padding: EdgeInsets.symmetric(
-                              vertical: 15, horizontal: 25),
-                          textStyle: TextStyle(
-                              fontSize: 18, fontWeight: FontWeight.bold),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(20),
+                      TextField(
+                        onChanged: (value) {
+                          setState(() {
+                            _userAnswer = value;
+                          });
+                        },
+                        decoration: InputDecoration(
+                          hintText: 'Enter your answer',
+                          filled: true,
+                          fillColor: Colors.white,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            borderSide: BorderSide.none,
                           ),
                         ),
-                        child: Text('Submit'),
+                        style: TextStyle(color: Colors.black),
                       ),
-                    ),
-                  ],
+                      SizedBox(height: 20),
+                      Center(
+                        child: ElevatedButton(
+                          onPressed: _submitAnswer,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.orangeAccent,
+                            padding: EdgeInsets.symmetric(
+                                vertical: 15, horizontal: 25),
+                            textStyle: TextStyle(
+                                fontSize: 18, fontWeight: FontWeight.bold),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                          ),
+                          child: Text('Submit'),
+                        ),
+                      ),
+                    ],
                   ] else ...[
                     Center(
                       child: Text(
@@ -706,7 +711,7 @@ void _submitAnswer() async {
 
   @override
   void dispose() {
-        _pollingTimer?.cancel(); // Cancel polling when the widget is disposed
+    _pollingTimer?.cancel(); // Cancel polling when the widget is disposed
     _countdownTimer?.cancel();
     // _confettiController.dispose();
     super.dispose();
@@ -757,28 +762,27 @@ class __AnimatedWinnerTextState extends State<_AnimatedWinnerText>
   }
 }
 
-
 class SpinnerWidget extends StatefulWidget {
   final List<String> names;
   final ValueChanged<String> onWinnerSelected;
- 
+
   SpinnerWidget({required this.names, required this.onWinnerSelected});
- 
+
   @override
   _SpinnerWidgetState createState() => _SpinnerWidgetState();
 }
- 
+
 class _SpinnerWidgetState extends State<SpinnerWidget>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _animation;
   late double _angle;
- 
+
   @override
   void initState() {
     super.initState();
     _angle = 0.0;
- 
+
     _controller = AnimationController(
       duration: const Duration(seconds: 5),
       vsync: this,
@@ -787,13 +791,13 @@ class _SpinnerWidgetState extends State<SpinnerWidget>
           _angle += _animation.value;
         });
       });
- 
+
     _animation = Tween<double>(begin: 0.0, end: 2 * pi).animate(_controller);
   }
- 
+
   void _spinWheel() {
     if (widget.names.isEmpty) return;
- 
+
     _controller.forward().then((_) {
       _controller.reset();
       final selectedIndex =
@@ -802,7 +806,7 @@ class _SpinnerWidgetState extends State<SpinnerWidget>
       widget.onWinnerSelected(widget.names[selectedIndex]);
     });
   }
- 
+
   @override
   Widget build(BuildContext context) {
     return Center(
@@ -839,7 +843,7 @@ class _SpinnerWidgetState extends State<SpinnerWidget>
     );
   }
 }
- 
+
 class WheelPainter extends CustomPainter {
   final double angle;
   final List names;
@@ -851,7 +855,9 @@ class WheelPainter extends CustomPainter {
 
   // Truncate text function
   String truncateText(String name, int maxLength) {
-    return name.length > maxLength ? name.substring(0, maxLength) + '...' : name;
+    return name.length > maxLength
+        ? name.substring(0, maxLength) + '...'
+        : name;
   }
 
   @override
@@ -889,20 +895,25 @@ class WheelPainter extends CustomPainter {
 
       // Calculate a dynamic font size based on slice angle
       double adjustedFontSize;
-      if (sweepAngle < 0.1) { // Adjust based on threshold for very thin slices
+      if (sweepAngle < 0.1) {
+        // Adjust based on threshold for very thin slices
         adjustedFontSize = minFontSize;
       } else {
-        adjustedFontSize = baseFontSize * (sweepAngle / (2 * pi / names.length));
-        adjustedFontSize = adjustedFontSize.clamp(minFontSize, baseFontSize); // Ensure it does not exceed the base size
+        adjustedFontSize =
+            baseFontSize * (sweepAngle / (2 * pi / names.length));
+        adjustedFontSize = adjustedFontSize.clamp(minFontSize,
+            baseFontSize); // Ensure it does not exceed the base size
       }
 
       // Prepare text painter for rendering
-      final double textAngle = startAngle + sweepAngle / 2; // Center angle of the slice
+      final double textAngle =
+          startAngle + sweepAngle / 2; // Center angle of the slice
       final double x = radius * 0.65 * cos(textAngle); // Positioning adjustment
       final double y = radius * 0.65 * sin(textAngle); // Positioning adjustment
 
       canvas.save();
-      canvas.translate(radius + x, radius + y); // Translate to the center of the text
+      canvas.translate(
+          radius + x, radius + y); // Translate to the center of the text
 
       // Rotate text to align with the slice
       canvas.rotate(textAngle);
@@ -930,7 +941,8 @@ class WheelPainter extends CustomPainter {
       textPainter.layout();
 
       // Paint the text centered
-      textPainter.paint(canvas, Offset(-textPainter.width / 2, -textPainter.height / 2));
+      textPainter.paint(
+          canvas, Offset(-textPainter.width / 2, -textPainter.height / 2));
 
       canvas.restore();
     }
