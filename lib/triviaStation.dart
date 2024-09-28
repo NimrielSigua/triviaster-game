@@ -520,7 +520,7 @@ class _TriviaStationState extends State<TriviaStation>
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Triviaster'),
+        title: Text('Triviasters'),
         backgroundColor:
             Colors.green[800], // Sets a game-like color theme for the app bar
       ),
