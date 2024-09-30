@@ -14,7 +14,8 @@ class TriviaStation extends StatefulWidget {
   final String? course;
   final String? role; // Added role field
 
-  TriviaStation({
+  const TriviaStation({
+    super.key,
     this.userId,
     this.fullname,
     this.year,
@@ -37,13 +38,17 @@ class _TriviaStationState extends State<TriviaStation>
   List<String> _correctUsers = []; // Store correct users locally
   // final ConfettiController _confettiController =
   //     ConfettiController(duration: Duration(seconds: 5));
-  String _status = 'active';
+  final String _status = 'active';
   String _userAnswer = '';
 
   late AnimationController _controller;
   late Animation<double> _animation;
   late List<String> _names;
   late double _angle;
+  bool _showSpinWheel = false;
+  bool _showNoCorrectAnswerDialog = false;
+  String _winner = '';
+  bool _showWinner = false;
 
   @override
   void initState() {
@@ -51,7 +56,7 @@ class _TriviaStationState extends State<TriviaStation>
     if (widget.role == 'admin') {
       _fetchTriviaQuestions();
       _startPollingForQuestionsAdmin();
-    } else {
+    } else if (widget.role == 'student' || widget.role == 'screen') {
       _startPollingForQuestions();
     }
 
@@ -69,21 +74,22 @@ class _TriviaStationState extends State<TriviaStation>
 
   void _startPollingForQuestions() {
     // Poll every 5 seconds (5000 milliseconds)
-    _pollingTimer = Timer.periodic(Duration(seconds: 1), (timer) {
+    _pollingTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
       _startTriviaForStudents(); // Fetch new trivia question
     });
   }
 
   void _startPollingForQuestionsAdmin() {
     // Poll every 5 seconds (5000 milliseconds)
-    _pollingTimer = Timer.periodic(Duration(seconds: 1), (timer) {
+    _pollingTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
       _startTriviaForStudents(); // Fetch new trivia question
     });
   }
 
   Future<void> _fetchTriviaQuestions() async {
     // String url = "http://10.0.0.57/api/triviasGameAPI.php";
-    String url = "http://192.168.0.108/triviaster/api/triviasGameAPI.php";
+    String url =
+        "http://192.168.0.108/triviapi/triviaster-game/api/triviasGameAPI.php";
     final Map<String, dynamic> queryParams = {
       "operation": "displayTrivia",
       'json': "",
@@ -113,7 +119,8 @@ class _TriviaStationState extends State<TriviaStation>
 
   void _startTriviaForStudents() async {
     // String url = "http://10.0.0.57/api/triviasGameAPI.php";
-    String url = "http://192.168.0.108/triviaster/api/triviasGameAPI.php";
+    String url =
+        "http://192.168.0.108/triviapi/triviaster-game/api/triviasGameAPI.php";
     final Map<String, dynamic> queryParams = {
       "operation": "getActiveTrivia",
       'json': jsonEncode({'user_id': widget.userId}),
@@ -151,7 +158,7 @@ class _TriviaStationState extends State<TriviaStation>
 
   void _startCountdown() {
     _countdownTimer?.cancel();
-    _countdownTimer = Timer.periodic(Duration(seconds: 1), (timer) {
+    _countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (mounted) {
         setState(() {
           if (_timeRemaining > 0) {
@@ -168,13 +175,12 @@ class _TriviaStationState extends State<TriviaStation>
   }
 
   void _showCorrectUsers() async {
-    if (widget.role != 'admin') {
-      // If the user is not an admin, don't show the dialog
+    if (widget.role != 'screen') {
       return;
     }
 
-    // String url = "http://10.0.0.57/api/triviasGameAPI.php";
-    String url = "http://192.168.0.108/triviaster/api/triviasGameAPI.php";
+    String url =
+        "http://192.168.0.108/triviapi/triviaster-game/api/triviasGameAPI.php";
     final Map<String, dynamic> queryParams = {
       "operation": "displayCorrectUser",
       'json': jsonEncode({'question_id': _currentQuestion!['question_id']}),
@@ -192,13 +198,14 @@ class _TriviaStationState extends State<TriviaStation>
         setState(() {
           _correctUsers =
               jsonData.map((user) => user['fullname'] as String).toList();
+          if (_correctUsers.isEmpty) {
+            _showNoCorrectAnswerDialog = true;
+            _showSpinWheel = false;
+          } else {
+            _showSpinWheel = true;
+            _showNoCorrectAnswerDialog = false;
+          }
         });
-
-        if (_correctUsers.isNotEmpty) {
-          _showCorrectUsersDialog(); // Only admin will reach this point
-        } else {
-          _showNoCorrectUsersDialog(); // Only admin will reach this point
-        }
       } else {
         print(
             "Failed to fetch correct users. Status code: ${response.statusCode}");
@@ -208,245 +215,282 @@ class _TriviaStationState extends State<TriviaStation>
     }
   }
 
-  void _showCorrectUsersDialog() {
-    // This method will only be called for admin users
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          backgroundColor: Colors.black87,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(15),
-          ),
-          title: Row(
-            children: [
-              Icon(Icons.videogame_asset_rounded, color: Colors.greenAccent),
-              SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  "Users who got the correct answer",
-                  style: TextStyle(
-                      color: Colors.greenAccent,
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold),
-                ),
-              ),
-            ],
-          ),
-          content: Container(
-            width: double.maxFinite,
-            child: SpinnerWidget(
-              names: _correctUsers,
-              onWinnerSelected: (winner) {
-                Navigator.of(context).pop();
-                _showWinnerDialog(winner);
-              },
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  void _showNoCorrectUsersDialog() {
-    // This method will only be called for admin users
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          backgroundColor: Colors.black87,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(15),
-          ),
-          title: Text(
-            "No correct users found.",
-            style: TextStyle(
-                color: Colors.redAccent,
-                fontSize: 24,
-                fontWeight: FontWeight.bold),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-              child: Text("Close"),
-            ),
-          ],
-        );
-      },
-    );
+  void _resetScreenState() {
+    setState(() {
+      _showSpinWheel = false;
+      _showNoCorrectAnswerDialog = false;
+      _showWinner = false;
+      _winner = '';
+      _currentQuestion = null;
+      _timeRemaining = 0;
+    });
   }
 
   void _showWinnerDialog(String winner) {
     showDialog(
       context: context,
+      barrierDismissible: false,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: Text("Lucky Winner"),
-          content: Container(
-            width: double.maxFinite,
-            height: 150,
-            child: Stack(
-              children: [
-                // ConfettiWidget(
-                //   confettiController: _confettiController,
-                //   blastDirection: pi / 4,
-                //   emissionFrequency: 0.1,
-                //   numberOfParticles: 20,
-                //   shouldLoop: false,
-                // ),
-                Center(
-                  child: _AnimatedWinnerText(winner),
-                ),
-              ],
-            ),
+          title: const Text('Winner!'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('Congratulations!',
+                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 20),
+              Text(winner,
+                  style: const TextStyle(
+                      fontSize: 36,
+                      color: Colors.green,
+                      fontWeight: FontWeight.bold)),
+            ],
           ),
           actions: [
             TextButton(
+              child: const Text('Close'),
               onPressed: () {
                 Navigator.of(context).pop();
+                _resetScreenState();
               },
-              child: Text("OK"),
             ),
           ],
         );
       },
     );
-
-    // _confettiController.play();
   }
 
-  void _selectLuckyWinner() {
-    if (_correctUsers.isNotEmpty) {
-      // Create a new instance of Random
-      final random = Random();
+  @override
+  Widget build(BuildContext context) {
+    if (widget.role == 'screen') {
+      return Scaffold(
+        body: Container(
+          color: const Color.fromARGB(255, 0, 80, 3),
+          child: Center(
+            child: _showSpinWheel
+                ? SpinnerWidget(
+                    names: _correctUsers,
+                    onWinnerSelected: (winner) {
+                      setState(() {
+                        _winner = winner;
+                        _showSpinWheel = false;
+                      });
+                      _showWinnerDialog(_winner);
+                    },
+                  )
+                : _showNoCorrectAnswerDialog
+                    ? AlertDialog(
+                        title: const Text("No Correct Answers"),
+                        content: const Text("No one got the correct answer."),
+                        actions: [
+                          TextButton(
+                            onPressed: _resetScreenState,
+                            child: const Text("Close"),
+                          ),
+                        ],
+                      )
+                    : Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            _currentQuestion == null
+                                ? 'Wait for the next trivia question'
+                                : '$_timeRemaining',
+                            style: TextStyle(
+                              fontSize: _currentQuestion == null ? 24 : 72,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                          const SizedBox(height: 40),
+                          if (_currentQuestion != null)
+                            Padding(
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 20),
+                              child: Text(
+                                '${_currentQuestion!['trivia']}',
+                                style: const TextStyle(
+                                  fontSize: 36,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                        ],
+                      ),
+          ),
+        ),
+      );
+    }
 
-      // Ensure that _correctUsers has the correct data
-      print('Correct Users List: $_correctUsers');
-
-      // Select a random index
-      int index = random.nextInt(_correctUsers.length);
-      String luckyWinner = _correctUsers[index];
-
-      // Debug print statements
-      print('Randomly Selected Index: $index');
-      print('Lucky Winner: $luckyWinner');
-
-      // Show the dialog
-      showDialog(
-        context: context,
-        builder: (BuildContext context) {
-          return AlertDialog(
-            title: Text("Lucky Winner"),
-            content: Container(
-              width: double.maxFinite,
-              height: 150,
-              child: Stack(
-                children: [
-                  // Add confetti animations
-                  // ConfettiWidget(
-                  //   confettiController: _confettiController,
-                  //   blastDirection: pi / 4,
-                  //   emissionFrequency: 0.1,
-                  //   numberOfParticles: 20,
-                  //   shouldLoop: false,
-                  // ),
+    // Admin and student roles
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Triviasters'),
+        backgroundColor: Colors.green[800],
+      ),
+      body: Center(
+        child: Container(
+          color: const Color.fromARGB(255, 0, 80, 3),
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Expanded(
+                      child: Text(
+                        "Welcome to the Game:",
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize:
+                              20, // Increase font size for a more prominent title
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      child: Text(
+                        "${widget.fullname}",
+                        style: const TextStyle(
+                          color: Colors
+                              .orangeAccent, // Make the username standout with a vibrant color
+                          fontWeight: FontWeight.w800,
+                          fontSize: 22, // Larger font for emphasis
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                Center(
+                  child: Text(
+                    '$_timeRemaining',
+                    style: const TextStyle(
+                      fontSize: 29,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white, // Countdown text color
+                      shadows: [
+                        Shadow(
+                          blurRadius: 10.0,
+                          color:
+                              Colors.black54, // Adding shadow for depth effect
+                          offset: Offset(3, 3),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                if (_currentQuestion != null) ...[
+                  if (_timeRemaining > 0) ...[
+                    Card(
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(
+                            15), // Rounded corners for the card
+                      ),
+                      color: Colors
+                          .white, // Make the card background white for contrast
+                      child: Padding(
+                        padding: const EdgeInsets.all(15.0),
+                        child: Center(
+                          child: Text(
+                            'Question: ${_currentQuestion!['trivia']}',
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Color.fromARGB(
+                                  255, 0, 0, 0), // Darker color for readability
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    if (widget.role == 'admin') ...[
+                      Text(
+                        'Correct Answer: ${_currentQuestion!['correct_answer']}',
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors
+                              .white, // Only admins see the correct answer
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                    ],
+                    if (widget.role == 'student') ...[
+                      TextField(
+                        onChanged: (value) {
+                          setState(() {
+                            _userAnswer = value;
+                          });
+                        },
+                        decoration: InputDecoration(
+                          hintText: 'Enter your answer',
+                          filled: true,
+                          fillColor: Colors.white,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            borderSide: BorderSide.none,
+                          ),
+                        ),
+                        style: const TextStyle(color: Colors.black),
+                      ),
+                      const SizedBox(height: 20),
+                      Center(
+                        child: ElevatedButton(
+                          onPressed: _submitAnswer,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.orangeAccent,
+                            padding: const EdgeInsets.symmetric(
+                                vertical: 15, horizontal: 25),
+                            textStyle: const TextStyle(
+                                fontSize: 18, fontWeight: FontWeight.bold),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                          ),
+                          child: const Text('Submit'),
+                        ),
+                      ),
+                    ],
+                  ] else ...[
+                    const Center(
+                      child: Text(
+                        'Wait for the next trivia question',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ],
+                ] else if (widget.role == 'admin') ...[
                   Center(
-                    child: _AnimatedWinnerText(luckyWinner),
+                    child: ElevatedButton(
+                      onPressed: _startTrivia,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.redAccent,
+                        padding: const EdgeInsets.symmetric(
+                            vertical: 15, horizontal: 25),
+                        textStyle: const TextStyle(
+                            fontSize: 18, fontWeight: FontWeight.bold),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                      ),
+                      child: const Text('Start Trivia'),
+                    ),
                   ),
                 ],
-              ),
+              ],
             ),
-            actions: [
-              TextButton(
-                onPressed: () {
-                  Navigator.of(context).pop(); // Close the lucky winner dialog
-                },
-                child: Text("OK"),
-              ),
-            ],
-          );
-        },
-      );
-
-      // _confettiController.play(); // Start confetti animation
-    } else {
-      print('No users available to select a winner.');
-    }
-  }
-
-  void _submitAnswer() async {
-    if (_userAnswer.isEmpty) {
-      // No answer provided, show a warning or return
-      return;
-    }
-
-    // Uri uri = Uri.parse('http://10.0.0.57/api/triviasGameAPI.php');
-    Uri uri =
-        Uri.parse('http://192.168.0.108/triviaster/api/triviasGameAPI.php');
-    String correctAnswer = _currentQuestion!['correct_answer'];
-    int questionId = _currentQuestion!['question_id'];
-
-    // Prepare data to send to the PHP API
-    Map<String, dynamic> data = {
-      'operation': 'submitAnswer',
-      'json': jsonEncode({
-        'user_id': widget.userId,
-        'answer': _userAnswer,
-        'trivia_id': questionId,
-      }),
-    };
-
-    try {
-      http.Response response = await http.post(uri, body: data);
-
-      if (response.statusCode == 200) {
-        var jsonResponse = jsonDecode(response.body);
-
-        // Ensure the 'success' key is present and is a boolean
-        bool isSuccess = jsonResponse['success'] ?? false;
-
-        if (isSuccess) {
-          // Handle the correct or incorrect answer dialog
-          if (_userAnswer.toLowerCase() == correctAnswer.toLowerCase()) {
-            _showAnswerDialog('Correct!',
-                'Well done, ${widget.fullname}! Your answer is correct.');
-          } else {
-            _showAnswerDialog('Incorrect',
-                'Sorry, ${widget.fullname}. The correct answer was $correctAnswer.');
-          }
-        } else {
-          // Handle the failure case
-          print('Failed to save the answer: ${jsonResponse['message']}');
-        }
-      } else {
-        // Handle HTTP error
-        print(
-            'Failed to submit the answer. Status code: ${response.statusCode}');
-      }
-    } catch (e) {
-      print("Error submitting the answer: $e");
-    }
-  }
-
-  void _showAnswerDialog(String title, String content) {
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: Text(title),
-          content: Text(content),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-              child: Text('OK'),
-            ),
-          ],
-        );
-      },
+          ),
+        ),
+      ),
     );
   }
 
@@ -458,7 +502,8 @@ class _TriviaStationState extends State<TriviaStation>
 
       // Save the trivia question ID to the database
       // String url = "http://10.0.0.57/api/triviasGameAPI.php";
-      String url = "http://192.168.0.108/triviaster/api/triviasGameAPI.php";
+      String url =
+          "http://192.168.0.108/triviapi/triviaster-game/api/triviasGameAPI.php";
       final Map<String, dynamic> queryParams = {
         "operation": "startTrivia",
         'json': jsonEncode(
@@ -492,7 +537,8 @@ class _TriviaStationState extends State<TriviaStation>
 
   Future<void> _updateTriviaStatus() async {
     // String url = "http://10.0.0.57/api/triviasGameAPI.php";
-    String url = "http://192.168.0.108/triviaster/api/triviasGameAPI.php";
+    String url =
+        "http://192.168.0.108/triviapi/triviaster-game/api/triviasGameAPI.php";
     final Map<String, dynamic> queryParams = {
       "operation": "updateTriviaStatus",
       'json': jsonEncode(
@@ -516,196 +562,86 @@ class _TriviaStationState extends State<TriviaStation>
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Triviasters'),
-        backgroundColor:
-            Colors.green[800], // Sets a game-like color theme for the app bar
-      ),
-      body: Center(
-        child: Container(
-          color: const Color.fromARGB(
-              255, 0, 80, 3), // Background color of the game screen
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        "Welcome to the Game:",
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize:
-                              20, // Increase font size for a more prominent title
-                        ),
-                      ),
-                    ),
-                    Expanded(
-                      child: Text(
-                        "${widget.fullname}",
-                        style: TextStyle(
-                          color: Colors
-                              .orangeAccent, // Make the username standout with a vibrant color
-                          fontWeight: FontWeight.w800,
-                          fontSize: 22, // Larger font for emphasis
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                SizedBox(height: 20),
-                Center(
-                  child: Text(
-                    '$_timeRemaining',
-                    style: TextStyle(
-                      fontSize: 29,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white, // Countdown text color
-                      shadows: [
-                        Shadow(
-                          blurRadius: 10.0,
-                          color:
-                              Colors.black54, // Adding shadow for depth effect
-                          offset: Offset(3, 3),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                SizedBox(height: 20),
-                if (_currentQuestion != null) ...[
-                  if (_timeRemaining > 0) ...[
-                    Card(
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(
-                            15), // Rounded corners for the card
-                      ),
-                      color: Colors
-                          .white, // Make the card background white for contrast
-                      child: Padding(
-                        padding: const EdgeInsets.all(15.0),
-                        child: Center(
-                          child: Text(
-                            'Question: ${_currentQuestion!['trivia']}',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: Color.fromARGB(
-                                  255, 0, 0, 0), // Darker color for readability
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                    SizedBox(height: 20),
-                    if (widget.role == 'admin') ...[
-                      Text(
-                        'Correct Answer: ${_currentQuestion!['correct_answer']}',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: Colors
-                              .white, // Only admins see the correct answer
-                        ),
-                      ),
-                      SizedBox(height: 20),
-                    ],
-                    if (widget.role == 'student') ...[
-                      TextField(
-                        onChanged: (value) {
-                          setState(() {
-                            _userAnswer = value;
-                          });
-                        },
-                        decoration: InputDecoration(
-                          hintText: 'Enter your answer',
-                          filled: true,
-                          fillColor: Colors.white,
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(10),
-                            borderSide: BorderSide.none,
-                          ),
-                        ),
-                        style: TextStyle(color: Colors.black),
-                      ),
-                      SizedBox(height: 20),
-                      Center(
-                        child: ElevatedButton(
-                          onPressed: _submitAnswer,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.orangeAccent,
-                            padding: EdgeInsets.symmetric(
-                                vertical: 15, horizontal: 25),
-                            textStyle: TextStyle(
-                                fontSize: 18, fontWeight: FontWeight.bold),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                          ),
-                          child: Text('Submit'),
-                        ),
-                      ),
-                    ],
-                  ] else ...[
-                    Center(
-                      child: Text(
-                        'Wait for the next trivia question',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                    if (widget.role == 'admin') ...[
-                      Center(
-                        child: ElevatedButton(
-                          onPressed: _startTrivia,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor:
-                                Colors.redAccent, // Button color for admin
-                            padding: EdgeInsets.symmetric(
-                                vertical: 15, horizontal: 25),
-                            textStyle: TextStyle(
-                                fontSize: 18, fontWeight: FontWeight.bold),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                          ),
-                          child: Text('Start Trivia'),
-                        ),
-                      ),
-                    ],
-                  ],
-                ] else if (widget.role == 'admin') ...[
-                  Center(
-                    child: ElevatedButton(
-                      onPressed: _startTrivia,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor:
-                            Colors.redAccent, // Button color for admin
-                        padding:
-                            EdgeInsets.symmetric(vertical: 15, horizontal: 25),
-                        textStyle: TextStyle(
-                            fontSize: 18, fontWeight: FontWeight.bold),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                      ),
-                      child: Text('Start Trivia'),
-                    ),
-                  ),
-                ],
-              ],
+  void _submitAnswer() async {
+    if (_userAnswer.isEmpty) {
+      print("No answer provided");
+      _showAnswerDialog('Error', 'Please enter an answer before submitting.');
+      return;
+    }
+
+    print("Submitting answer: $_userAnswer"); // Debug print
+
+    Uri uri = Uri.parse(
+        'http://192.168.0.108/triviapi/triviaster-game/api/triviasGameAPI.php');
+    String correctAnswer = _currentQuestion!['correct_answer'];
+    String questionId =
+        _currentQuestion!['question_id'].toString(); // Convert to String
+
+    Map<String, dynamic> data = {
+      'operation': 'submitAnswer',
+      'json': jsonEncode({
+        'user_id': widget.userId,
+        'answer': _userAnswer,
+        'trivia_id': questionId,
+      }),
+    };
+
+    try {
+      print("Sending request to server"); // Debug print
+      http.Response response = await http.post(uri, body: data);
+      print(
+          "Response received. Status code: ${response.statusCode}"); // Debug print
+
+      if (response.statusCode == 200) {
+        var jsonResponse = jsonDecode(response.body);
+        print("Server response: $jsonResponse"); // Debug print
+
+        bool isSuccess = jsonResponse['success'] ?? false;
+
+        if (isSuccess) {
+          bool isCorrect =
+              _userAnswer.toLowerCase() == correctAnswer.toLowerCase();
+          String title = isCorrect ? 'Correct!' : 'Incorrect';
+          String content = isCorrect
+              ? 'Well done, ${widget.fullname}! Your answer is correct.'
+              : 'Sorry, ${widget.fullname}. The correct answer was $correctAnswer.';
+
+          print("Showing answer dialog: $title - $content"); // Debug print
+          _showAnswerDialog(title, content);
+        } else {
+          print("Failed to save the answer: ${jsonResponse['message']}");
+          _showAnswerDialog(
+              'Error', 'Failed to submit your answer. Please try again.');
+        }
+      } else {
+        print("HTTP error. Status code: ${response.statusCode}");
+        _showAnswerDialog(
+            'Error', 'Failed to submit your answer. Please try again.');
+      }
+    } catch (e) {
+      print("Error submitting the answer: $e");
+      _showAnswerDialog('Error', 'An error occurred. Please try again.');
+    }
+  }
+
+  void _showAnswerDialog(String title, String content) {
+    print("Showing dialog: $title - $content"); // Debug print
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text(title),
+          content: Text(content),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: const Text('OK'),
             ),
-          ),
-        ),
-      ),
+          ],
+        );
+      },
     );
   }
 
@@ -721,7 +657,7 @@ class _TriviaStationState extends State<TriviaStation>
 class _AnimatedWinnerText extends StatefulWidget {
   final String winnerName;
 
-  _AnimatedWinnerText(this.winnerName);
+  const _AnimatedWinnerText(this.winnerName);
 
   @override
   __AnimatedWinnerTextState createState() => __AnimatedWinnerTextState();
@@ -754,7 +690,7 @@ class __AnimatedWinnerTextState extends State<_AnimatedWinnerText>
         scale: _animation,
         child: Text(
           "Congratulations, ${widget.winnerName}!",
-          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
           textAlign: TextAlign.center,
         ),
       ),
@@ -766,7 +702,8 @@ class SpinnerWidget extends StatefulWidget {
   final List<String> names;
   final ValueChanged<String> onWinnerSelected;
 
-  SpinnerWidget({required this.names, required this.onWinnerSelected});
+  const SpinnerWidget(
+      {super.key, required this.names, required this.onWinnerSelected});
 
   @override
   _SpinnerWidgetState createState() => _SpinnerWidgetState();
@@ -829,8 +766,8 @@ class _SpinnerWidgetState extends State<SpinnerWidget>
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
               ),
-              padding: EdgeInsets.symmetric(vertical: 12, horizontal: 24),
-              textStyle: TextStyle(
+              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 24),
+              textStyle: const TextStyle(
                 fontFamily: 'PressStart2P', // Gaming-themed font
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
@@ -856,7 +793,7 @@ class WheelPainter extends CustomPainter {
   // Truncate text function
   String truncateText(String name, int maxLength) {
     return name.length > maxLength
-        ? name.substring(0, maxLength) + '...'
+        ? '${name.substring(0, maxLength)}...'
         : name;
   }
 
@@ -877,7 +814,7 @@ class WheelPainter extends CustomPainter {
             Colors.primaries[i % Colors.primaries.length],
             Colors.primaries[(i + 1) % Colors.primaries.length],
           ],
-          stops: [0.5, 1.0],
+          stops: const [0.5, 1.0],
         ).createShader(
             Rect.fromCircle(center: Offset(radius, radius), radius: radius))
         ..style = PaintingStyle.fill;
@@ -930,7 +867,7 @@ class WheelPainter extends CustomPainter {
             fontWeight: FontWeight.bold,
             shadows: [
               Shadow(
-                offset: Offset(1, 1),
+                offset: const Offset(1, 1),
                 blurRadius: 3,
                 color: Colors.black.withOpacity(0.7),
               ),
