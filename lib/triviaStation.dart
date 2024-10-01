@@ -560,6 +560,12 @@ class _TriviaStationState extends State<TriviaStation>
 
       if (response.statusCode == 200) {
         print("Trivia status updated successfully");
+        if (mounted) {
+          setState(() {
+            _currentQuestion = null; // Reset the current question
+            _timeRemaining = 0; // Reset the timer
+          });
+        }
       } else {
         print(
             "Failed to update trivia status. Status code: ${response.statusCode}");
