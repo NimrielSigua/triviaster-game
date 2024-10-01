@@ -87,9 +87,10 @@ class _TriviaStationState extends State<TriviaStation>
   }
 
   Future<void> _fetchTriviaQuestions() async {
-    // String url = "http://10.0.0.57/api/triviasGameAPI.php";
     String url =
-        "http://192.168.0.108/triviapi/triviaster-game/api/triviasGameAPI.php";
+        "http://10.0.0.57/triviagame/triviaster/api/triviasGameAPI.php";
+    // String url =
+    //     "http://192.168.0.108/triviapi/triviaster-game/api/triviasGameAPI.php";
     final Map<String, dynamic> queryParams = {
       "operation": "displayTrivia",
       'json': "",
@@ -120,7 +121,9 @@ class _TriviaStationState extends State<TriviaStation>
   void _startTriviaForStudents() async {
     // String url = "http://10.0.0.57/api/triviasGameAPI.php";
     String url =
-        "http://192.168.0.108/triviapi/triviaster-game/api/triviasGameAPI.php";
+        "http://10.0.0.57/triviagame/triviaster/api/triviasGameAPI.php";
+    // String url =
+    //     "http://192.168.0.108/triviapi/triviaster-game/api/triviasGameAPI.php";
     final Map<String, dynamic> queryParams = {
       "operation": "getActiveTrivia",
       'json': jsonEncode({'user_id': widget.userId}),
@@ -165,9 +168,9 @@ class _TriviaStationState extends State<TriviaStation>
             _timeRemaining--;
           } else {
             timer.cancel();
-
             _showCorrectUsers();
             _updateTriviaStatus();
+            _currentQuestion = null; // Reset the current question
           }
         });
       }
@@ -180,7 +183,9 @@ class _TriviaStationState extends State<TriviaStation>
     }
 
     String url =
-        "http://192.168.0.108/triviapi/triviaster-game/api/triviasGameAPI.php";
+        "http://10.0.0.57/triviagame/triviaster/api/triviasGameAPI.php";
+    // String url =
+    //     "http://192.168.0.108/triviapi/triviaster-game/api/triviasGameAPI.php";
     final Map<String, dynamic> queryParams = {
       "operation": "displayCorrectUser",
       'json': jsonEncode({'question_id': _currentQuestion!['question_id']}),
@@ -383,88 +388,75 @@ class _TriviaStationState extends State<TriviaStation>
                   ),
                 ),
                 const SizedBox(height: 20),
-                if (_currentQuestion != null) ...[
-                  if (_timeRemaining > 0) ...[
-                    Card(
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(
-                            15), // Rounded corners for the card
-                      ),
-                      color: Colors
-                          .white, // Make the card background white for contrast
-                      child: Padding(
-                        padding: const EdgeInsets.all(15.0),
-                        child: Center(
-                          child: Text(
-                            'Question: ${_currentQuestion!['trivia']}',
-                            style: const TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: Color.fromARGB(
-                                  255, 0, 0, 0), // Darker color for readability
-                            ),
+                if (_currentQuestion != null && _timeRemaining > 0) ...[
+                  Card(
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(
+                          15), // Rounded corners for the card
+                    ),
+                    color: Colors
+                        .white, // Make the card background white for contrast
+                    child: Padding(
+                      padding: const EdgeInsets.all(15.0),
+                      child: Center(
+                        child: Text(
+                          'Question: ${_currentQuestion!['trivia']}',
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Color.fromARGB(
+                                255, 0, 0, 0), // Darker color for readability
                           ),
                         ),
                       ),
                     ),
+                  ),
+                  const SizedBox(height: 20),
+                  if (widget.role == 'admin') ...[
+                    Text(
+                      'Correct Answer: ${_currentQuestion!['correct_answer']}',
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors
+                            .white, // Only admins see the correct answer
+                      ),
+                    ),
                     const SizedBox(height: 20),
-                    if (widget.role == 'admin') ...[
-                      Text(
-                        'Correct Answer: ${_currentQuestion!['correct_answer']}',
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: Colors
-                              .white, // Only admins see the correct answer
+                  ],
+                  if (widget.role == 'student') ...[
+                    TextField(
+                      onChanged: (value) {
+                        setState(() {
+                          _userAnswer = value;
+                        });
+                      },
+                      decoration: InputDecoration(
+                        hintText: 'Enter your answer',
+                        filled: true,
+                        fillColor: Colors.white,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: BorderSide.none,
                         ),
                       ),
-                      const SizedBox(height: 20),
-                    ],
-                    if (widget.role == 'student') ...[
-                      TextField(
-                        onChanged: (value) {
-                          setState(() {
-                            _userAnswer = value;
-                          });
-                        },
-                        decoration: InputDecoration(
-                          hintText: 'Enter your answer',
-                          filled: true,
-                          fillColor: Colors.white,
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(10),
-                            borderSide: BorderSide.none,
+                      style: const TextStyle(color: Colors.black),
+                    ),
+                    const SizedBox(height: 20),
+                    Center(
+                      child: ElevatedButton(
+                        onPressed: _submitAnswer,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.orangeAccent,
+                          padding: const EdgeInsets.symmetric(
+                              vertical: 15, horizontal: 25),
+                          textStyle: const TextStyle(
+                              fontSize: 18, fontWeight: FontWeight.bold),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(20),
                           ),
                         ),
-                        style: const TextStyle(color: Colors.black),
-                      ),
-                      const SizedBox(height: 20),
-                      Center(
-                        child: ElevatedButton(
-                          onPressed: _submitAnswer,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.orangeAccent,
-                            padding: const EdgeInsets.symmetric(
-                                vertical: 15, horizontal: 25),
-                            textStyle: const TextStyle(
-                                fontSize: 18, fontWeight: FontWeight.bold),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                          ),
-                          child: const Text('Submit'),
-                        ),
-                      ),
-                    ],
-                  ] else ...[
-                    const Center(
-                      child: Text(
-                        'Wait for the next trivia question',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
+                        child: const Text('Submit'),
                       ),
                     ),
                   ],
@@ -485,6 +477,17 @@ class _TriviaStationState extends State<TriviaStation>
                       child: const Text('Start Trivia'),
                     ),
                   ),
+                ] else ...[
+                  const Center(
+                    child: Text(
+                      'Wait for the next trivia question',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
                 ],
               ],
             ),
@@ -503,7 +506,9 @@ class _TriviaStationState extends State<TriviaStation>
       // Save the trivia question ID to the database
       // String url = "http://10.0.0.57/api/triviasGameAPI.php";
       String url =
-          "http://192.168.0.108/triviapi/triviaster-game/api/triviasGameAPI.php";
+        "http://10.0.0.57/triviagame/triviaster/api/triviasGameAPI.php";
+      // String url =
+      //     "http://192.168.0.108/triviapi/triviaster-game/api/triviasGameAPI.php";
       final Map<String, dynamic> queryParams = {
         "operation": "startTrivia",
         'json': jsonEncode(
@@ -538,7 +543,9 @@ class _TriviaStationState extends State<TriviaStation>
   Future<void> _updateTriviaStatus() async {
     // String url = "http://10.0.0.57/api/triviasGameAPI.php";
     String url =
-        "http://192.168.0.108/triviapi/triviaster-game/api/triviasGameAPI.php";
+        "http://10.0.0.57/triviagame/triviaster/api/triviasGameAPI.php";
+    // String url =
+    //     "http://192.168.0.108/triviapi/triviaster-game/api/triviasGameAPI.php";
     final Map<String, dynamic> queryParams = {
       "operation": "updateTriviaStatus",
       'json': jsonEncode(
@@ -572,7 +579,9 @@ class _TriviaStationState extends State<TriviaStation>
     print("Submitting answer: $_userAnswer"); // Debug print
 
     Uri uri = Uri.parse(
-        'http://192.168.0.108/triviapi/triviaster-game/api/triviasGameAPI.php');
+        'http://10.0.0.57/triviagame/triviaster/api/triviasGameAPI.php');
+    // Uri uri = Uri.parse(
+    //     'http://192.168.0.108/triviapi/triviaster-game/api/triviasGameAPI.php');
     String correctAnswer = _currentQuestion!['correct_answer'];
     String questionId =
         _currentQuestion!['question_id'].toString(); // Convert to String

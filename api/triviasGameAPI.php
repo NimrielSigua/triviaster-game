@@ -164,29 +164,29 @@ class User
         return json_encode(['success' => true]);
     }
     function updateTriviaStatus($json)
-{
-    include "connection.php";
+    {
+        include "connection.php";
 
-    $json = json_decode($json, true);
+        $json = json_decode($json, true);
 
-    // Correct SQL syntax with SET clause
-    $sql = "UPDATE active_trivia SET status = :status WHERE question_id = :question_id";
-    $stmt = $conn->prepare($sql);
-    $stmt->bindParam(":status", $json['status']);
-    $stmt->bindParam(":question_id", $json['question_id']); // Make sure to include question_id in your JSON data
+        // Correct SQL syntax with SET clause
+        $sql = "UPDATE active_trivia SET status = :status WHERE question_id = :question_id";
+        $stmt = $conn->prepare($sql);
+        $stmt->bindParam(":status", $json['status']);
+        $stmt->bindParam(":question_id", $json['question_id']); // Make sure to include question_id in your JSON data
 
-    try {
-        $stmt->execute();
-        $response = ['success' => true];
-    } catch (PDOException $e) {
-        $response = ['success' => false, 'error' => $e->getMessage()];
+        try {
+            $stmt->execute();
+            $response = ['success' => true];
+        } catch (PDOException $e) {
+            $response = ['success' => false, 'error' => $e->getMessage()];
+        }
+
+        unset($conn);
+        unset($stmt);
+
+        return json_encode($response);
     }
-
-    unset($conn);
-    unset($stmt);
-
-    return json_encode($response);
-}
 
     function getActiveTrivia()
     {
@@ -233,6 +233,42 @@ ORDER BY active_trivia.question_id DESC;"; // Get a random active trivia questio
 
         return json_encode(['success' => true]);
     }
+
+    function loginStudent($json)
+    {
+        include "connection.php";
+
+        $json = json_decode($json, true);
+        $studentId = $json['studentId'];
+
+        // Remove the password check for now, as it's not being sent from the client
+        $sql = "SELECT id, studentId, stud_name, role FROM tblusers WHERE studentId = :studentId";
+        $stmt = $conn->prepare($sql);
+        $stmt->bindParam(":studentId", $studentId);
+        $stmt->execute();
+
+        if ($stmt->rowCount() > 0) {
+            // User exists
+            $user = $stmt->fetch(PDO::FETCH_ASSOC);
+            unset($conn);
+            unset($stmt);
+            return json_encode([
+                'success' => true,
+                'user_id' => $user['id'],
+                'studentId' => $user['studentId'],
+                'fullname' => $user['stud_name'],
+                'role' => $user['role']
+            ]);
+        } else {
+            // User doesn't exist
+            unset($conn);
+            unset($stmt);
+            return json_encode([
+                'success' => false,
+                'message' => 'Invalid student ID'
+            ]);
+        }
+    }
 }
 
 if ($_SERVER['REQUEST_METHOD'] == 'GET') {
@@ -271,5 +307,8 @@ switch ($operation) {
         break;
     case "addWinners":
         echo $user->updateTriviaStatus($json);
+        break;
+    case "loginStudent":
+        echo $user->loginStudent($json);
         break;
 }

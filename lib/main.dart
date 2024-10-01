@@ -96,13 +96,8 @@ class _EnterGamePageState extends State<EnterGamePage>
                         const SizedBox(height: 24),
                         TextField(
                           controller: usernameController,
-                          style: const TextStyle(
-                            color: Colors.black87,
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
                           decoration: InputDecoration(
-                            labelText: 'Full Name',
+                            labelText: 'Student ID',
                             labelStyle: TextStyle(color: Colors.blue[800]),
                             prefixIcon:
                                 Icon(Icons.person, color: Colors.blue[800]),
@@ -123,68 +118,17 @@ class _EnterGamePageState extends State<EnterGamePage>
                           ),
                         ),
                         const SizedBox(height: 24),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: ElevatedButton(
-                                onPressed: enterGame,
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor:
-                                      Colors.green, // Changed from primary
-                                  foregroundColor:
-                                      Colors.white, // Changed from onPrimary
-                                  padding:
-                                      const EdgeInsets.symmetric(vertical: 15),
-                                  textStyle: const TextStyle(
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.bold),
-                                  shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(20)),
-                                  elevation: 5,
-                                ),
-                                child: Text('Student'),
-                              ),
-                            ),
-                            const SizedBox(width: 16),
-                            Expanded(
-                              child: ElevatedButton(
-                                onPressed: verifyAdmin,
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor:
-                                      Colors.red, // Changed from primary
-                                  foregroundColor:
-                                      Colors.white, // Changed from onPrimary
-                                  padding:
-                                      const EdgeInsets.symmetric(vertical: 15),
-                                  textStyle: const TextStyle(
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.bold),
-                                  shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(20)),
-                                  elevation: 5,
-                                ),
-                                child: Text('Admin'),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 16),
                         ElevatedButton(
-                          onPressed: enterAsScreen,
+                          onPressed: enterGame,
                           style: ElevatedButton.styleFrom(
-                            backgroundColor:
-                                Colors.yellow, // Changed from primary
-                            foregroundColor:
-                                Colors.black, // Changed from onPrimary
-                            padding: const EdgeInsets.symmetric(
-                                vertical: 15, horizontal: 32),
-                            textStyle: const TextStyle(
-                                fontSize: 18, fontWeight: FontWeight.bold),
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(20)),
+                            backgroundColor: Colors.blue,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 15),
+                            textStyle: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                             elevation: 5,
                           ),
-                          child: Text('Screen'),
+                          child: Text('Login'),
                         ),
                       ],
                     ),
@@ -199,15 +143,12 @@ class _EnterGamePageState extends State<EnterGamePage>
   }
 
   void enterGame() async {
-    // Uri uri = Uri.parse('http://10.0.0.57/api/triviasGameAPI.php');
-    Uri uri = Uri.parse(
-        'http://192.168.0.108/triviapi/triviaster-game/api/triviasGameAPI.php');
+    Uri uri = Uri.parse('http://10.0.0.57/triviagame/triviaster/api/triviasGameAPI.php');
 
     Map<String, dynamic> data = {
-      'operation': 'EnterGameStudent',
+      'operation': 'loginStudent',
       'json': jsonEncode({
-        'fullname': usernameController.text,
-        'role': 'student', // Pass the role here
+        'studentId': usernameController.text,
       }),
     };
 
@@ -217,16 +158,27 @@ class _EnterGamePageState extends State<EnterGamePage>
       if (response.statusCode == 200) {
         var responseData = jsonDecode(response.body);
 
-        showMessageBox(
-          context,
-          responseData['exists'] == true ? "Notice" : "Success",
-          responseData['exists'] == true
-              ? "Welcome back, ${responseData['fullname']}!"
-              : "Welcome to the game ${responseData['fullname']}",
-          responseData['user_id'].toString(),
-          responseData['fullname'],
-          responseData['role'], // Pass the role here
-        );
+        if (responseData['success']) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => TriviaStation(
+                userId: responseData['user_id'].toString(),
+                fullname: responseData['fullname'],
+                role: responseData['role'],
+              ),
+            ),
+          );
+        } else {
+          showMessageBox(
+            context,
+            "Error",
+            responseData['message'],
+            null,
+            null,
+            null,
+          );
+        }
       } else {
         showMessageBox(
           context,
@@ -250,9 +202,9 @@ class _EnterGamePageState extends State<EnterGamePage>
   }
 
   void verifyAdmin() async {
-    // Uri uri = Uri.parse('http://10.0.0.57/api/triviasGameAPI.php');
-    Uri uri = Uri.parse(
-        'http://192.168.0.108/triviapi/triviaster-game/api/triviasGameAPI.php');
+    Uri uri = Uri.parse('http://10.0.0.57/triviagame/triviaster/api/triviasGameAPI.php');
+    // Uri uri = Uri.parse(
+    //     'http://192.168.0.108/triviapi/triviaster-game/api/triviasGameAPI.php');
 
     Map<String, dynamic> data = {
       'operation': 'VerifyAdmin',
